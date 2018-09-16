@@ -1,0 +1,33 @@
+{
+  "name": "clibproxy",
+  "version": "0.1.0",
+  "description": "proxy js",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bajdcc/clibproxy.git"
+  },
+  "keywords": [
+    "proxy",
+    "nodejs"
+  ],
+  "author": "bajdcc",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bajdcc/clibproxy/issues"
+  },
+  "homepage": "https://github.com/bajdcc/clibproxy#readme",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.2",
+    "express": "^4.16.3",
+    "morgan": "^1.9.1",
+    "nodemon": "^1.18.4",
+    "through2": "^2.0.3",
+    "winston": "^3.1.0",
+    "iconv-lite": "latest"
+  }
+}
