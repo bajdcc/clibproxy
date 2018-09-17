@@ -134,6 +134,14 @@ const get_original = (u) => {
     return _u;
 };
 
+const get_client_ip = (req) => {
+    return req.headers['x-forwarded-for'] ||
+    req.connection.remoteAddress ||
+    req.socket.remoteAddress ||
+    req.connection.socket.remoteAddress ||
+    'No IP';
+}
+
 const logging = (tokens, req, res) => {
     const method = tokens.method(req, res);
     let _url = tokens.url(req, res);
@@ -151,7 +159,7 @@ const logging = (tokens, req, res) => {
     else if (status >= 300)
         color = 36;
     const elapsedColor = (elapsed < 500) ? 90 : 31;
-    return `\x1b[90m${method} ${_url} \x1b[${color}m${status} \x1b[90m${length} \x1b[${elapsedColor}m${elapsed.toFixed(0)}ms\x1b[0m`;
+    return `\x1b[90m${get_client_ip(req)} | ${method} ${_url} \x1b[${color}m${status} \x1b[90m${length} \x1b[${elapsedColor}m${elapsed.toFixed(0)}ms\x1b[0m`;
 };
 
 morgan.format('short', logging);
@@ -178,13 +186,15 @@ app.use('/proxy.html', function (req, res) {
         return;
     }
     r += request.substr(req_base64[0].length);
-    const _req = url.parse(r);
+    let _req = url.parse(r);
     if (!_req.host) {
         res.status(502).send({message: 'Invalid host!'});
         return;
     }
-    const isHTTPS = _req.protocol === 'https:';
-    if (/https?:\/\/www\.baidu\.com/.test(r)) {
+    let isHTTPS = _req.protocol === 'https:';
+    if (/https:\/\/www\.baidu\.com/.test(r)) {
+        _req = url.parse(r.replace(/https/, 'http'));
+        isHTTPS = _req.protocol === 'https:';
     } else {
         if (req.headers['referer']) {
             const ref = req.headers['referer'];

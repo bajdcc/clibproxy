@@ -1,3 +1,4 @@
+<script src="/ajaxhook.min.js"></script>
 <script src="/jquery-3.3.1.min.js"></script>
     <style type="text/css">
 
@@ -77,6 +78,27 @@
 
     </style>
     <script type="text/javascript">
+        hookAjax({
+            //拦截回调
+            onreadystatechange:function(xhr){
+                //console.log("onreadystatechange called: %O",xhr)
+            },
+            onload:function(xhr){
+                //console.log("onload called: %O",xhr)
+            },
+            //拦截方法
+            open:function(arg,xhr){
+                if(arg[0]==='GET'){
+                    if(/(https?:)?\/\//.test(arg[1])&&!/https:\/\/proxy\.learn\.io/.test(arg[1])){
+                        var b = new Base64();
+                        var url = b.encode(arg[1]);
+                        arg[1] = 'https://proxy.learn.io/proxy.html?__q=' + url;
+                    }
+                }
+                console.log('ajax hook: ' + arg[1]);
+                //console.log("open called: method:%s,url:%s,async:%s",arg[0],arg[1],arg[2])
+            }
+        })
         function z_go() {
             var value = document.getElementById('url-txt-url').value;
             if (value === '')
@@ -136,11 +158,11 @@
         }
     }
 
-    $(document).ready(function(){
+    setTimeout(function(){
         var b = new Base64();
         var url = b.decode(gup('__q'));
         $('#url-txt-url').val(url);
-    });
+    },10);
 
     smart_select(document.getElementById("url-txt-url"));
 /*
