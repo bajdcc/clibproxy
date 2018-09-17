@@ -85,7 +85,7 @@
                 value = 'http://' + value;
             var b = new Base64();
             var url = b.encode(value);
-            window.location.href = '/proxy.html?q=' + url;
+            window.location.href = '/proxy.html?__q=' + url;
         }
 
         function z_keypress(e) {
@@ -138,7 +138,7 @@
 
     $(document).ready(function(){
         var b = new Base64();
-        var url = b.decode(gup('q'));
+        var url = b.decode(gup('__q'));
         $('#url-txt-url').val(url);
     });
 

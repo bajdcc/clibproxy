@@ -73,7 +73,7 @@ const convert_internal = (r, link, ssl) => {
 const convert_link = (r, link, ssl) => {
     if (/data:/.test(link))
         return link;
-    return `https://${HOSTNAME}/proxy.html?q=${base64.encode(convert_internal(r, link, ssl))}`;
+    return `https://${HOSTNAME}/proxy.html?__q=${base64.encode(convert_internal(r, link, ssl))}`;
 };
 
 const convert_script = (r, link, ssl) => {
@@ -128,7 +128,7 @@ const formatHtml = (r, ssl) => {
 };
 
 const get_original = (u) => {
-    const _u = base64.decode(querystring.parse(url.parse(u || '').query || '')['q'] || '');
+    const _u = base64.decode(querystring.parse(url.parse(u || '').query || '')['__q'] || '');
     if (_u === '')
         return null;
     return _u;
@@ -162,7 +162,7 @@ app.use('/proxy.html', function (req, res) {
         res.redirect(302, `https://${HOSTNAME}${req.originalUrl}`);
         return;
     }*/
-    const request = req.query['q'];
+    const request = req.query['__q'];
     if (!request) {
         res.status(502).send({message: 'Invalid request!'});
         return;
@@ -199,7 +199,8 @@ app.use('/proxy.html', function (req, res) {
         }
     }
     const __req = (isHTTPS ? https : http).request(_req, __res => {
-        res.setHeader('Content-Type', __res.headers['content-type']);
+        if (__res.headers['content-type'])
+            res.setHeader('Content-Type', __res.headers['content-type']);
         res.setHeader('X-Proxy-Origin', r);
         res.setHeader('X-Server', 'CLIB PROXY SERVER');
         if (__res.statusCode === 200 && __res.headers['content-type'] && /text\/html/.test(__res.headers['content-type'])) {
@@ -247,8 +248,8 @@ app.use((req, res, next) => {
         const link = convert_link(ref_url, req.originalUrl, req.protocol === 'https:');
         res.redirect(302, link);
     } else {
-        if (req.hostname === 'localhost')
-            res.redirect(302, convert_link('http://www.baidu.com/', '', false));
+        if (req.hostname !== HOSTNAME)
+            res.redirect(302, convert_link('http://www.baidu.com', '/', false));
         else
             res.status(502).send({message: 'Proxy failed!'});
     }
