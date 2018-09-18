@@ -63,17 +63,19 @@ const base64 = (() => {
 })();
 
 const convert_internal = (r, link, ssl) => {
-    if (/(https?|javascript):/.test(link))
+    if (/^(https?|javascript):/.test(link))
         return link;
-    if (/\/\//.test(link))
+    if (/^\/\//.test(link))
         return (ssl ? 'https:' : 'http:') + link;
     return new url.URL(link, r).href;
 };
 
 const convert_link = (r, link, ssl) => {
-    if (/data:/.test(link))
+    if (/^data:/.test(link))
         return link;
-    return `https://${HOSTNAME}/proxy.html?__q=${base64.encode(convert_internal(r, link, ssl))}`;
+    if (/^https?:/.test(link) || /^\/.+/.test(link))
+        return `https://${HOSTNAME}/proxy.html?__q=${base64.encode(convert_internal(r, link, ssl))}`;
+    return link;
 };
 
 const convert_script = (r, link, ssl) => {
@@ -110,6 +112,9 @@ const formatHtml = (r, ssl) => {
                 $('[src]').each((i, elem) => {
                     $(elem).attr('src', convert_link(r, $(elem).attr('src'), ssl));
                 });
+                $('[value]').each((i, elem) => {
+                    $(elem).attr('value', convert_link(r, $(elem).attr('value'), ssl));
+                });
                 $('script').each((i, elem) => {
                     let e = $(elem);
                     if (e.attr('src'))
@@ -117,6 +122,13 @@ const formatHtml = (r, ssl) => {
                     e.html(convert_script(r, e.html(), ssl));
                 });
                 $('body').prepend(injectContent);
+                const __u = url.parse(r);
+                const s = '<script>'+
+                    'window.__clib_proxy__="'+r+'";'+
+                    'window.__clib_proxy_host__="'+__u.hostname+'";'+
+                    'window.__clib_proxy_ssl__='+/^https/.test(__u.protocol)+';'+
+                    '</script>';
+                $('body').prepend(s);
                 next(null, $.html());
             } else {
                 next(null, null);
@@ -208,6 +220,7 @@ app.use('/proxy.html', function (req, res) {
             _req.headers = {'referer': _req.hostname};
         }
     }
+    _req.method = req.method;
     const __req = (isHTTPS ? https : http).request(_req, __res => {
         if (__res.headers['content-type'])
             res.setHeader('Content-Type', __res.headers['content-type']);
@@ -255,7 +268,7 @@ app.use((req, res, next) => {
             res.status(502).send({message: 'Proxy failed!', url: ref});
             return;
         }
-        const link = convert_link(ref_url, req.originalUrl, req.protocol === 'https:');
+        const link = convert_link(ref_url, req.originalUrl, /^https:/.test(ref_url));
         res.redirect(302, link);
     } else {
         if (req.hostname !== HOSTNAME)
