@@ -73,9 +73,11 @@ const convert_internal = (r, link, ssl) => {
 const convert_link = (r, link, ssl) => {
     if (/^data:/.test(link))
         return link;
-    if (/^https?:/.test(link) || /^\/.+/.test(link))
+    if (/^\/\//.test(link))
+        return `https://${HOSTNAME}/proxy.html?__q=${base64.encode(convert_internal(r, link.slice(2), ssl))}`;
+    if (/^https?:/.test(link) || /^\/.*/.test(link))
         return `https://${HOSTNAME}/proxy.html?__q=${base64.encode(convert_internal(r, link, ssl))}`;
-    return link;
+    return `https://${HOSTNAME}/proxy.html?__q=${base64.encode(convert_internal(r, url.resolve(r, link), ssl))}`;
 };
 
 const convert_script = (r, link, ssl) => {
@@ -96,7 +98,7 @@ const formatHtml = (r, ssl) => {
     let buf = [];
     return through2((chunk, enc, next) => {
             buf.push(chunk);
-            if (/<\/html>/.test(chunk.slice(chunk.length - 15)) || /<\/html>/.test(chunk.slice(chunk.length - 100))) {
+            if (/<\/html>/.test(chunk)) {
                 const b = Buffer.concat(buf);
                 let html = b.toString('utf-8');
                 let $ = cheerio.load(html);
@@ -238,23 +240,29 @@ function deal_req(req, res) {
         }
         if (__res.statusCode === 302) {
             const _u = url.parse(__res.headers['location'] || '');
-            if (_u.hostname && _u.hostname !== HOSTNAME) {
-                res.redirect(302, convert_link(r, __res.headers['location'], _u.protocol === 'https:'));
-                return;
+            const _host = _u.hostname || _req.hostname;
+            if (_host && _host !== HOSTNAME) {
+                res.redirect(302, convert_link(r, url.resolve(_host, __res.headers['location']), _u.protocol === 'https:'));
+            } else {
+                res.status(502).send({message: 'Proxy failed! 302 Missing location.'});
             }
+            return;
         }
         if (__res.statusCode === 301) {
             const _u = url.parse(__res.headers['location'] || '');
-            if (_u.hostname && _u.hostname !== HOSTNAME) {
-                res.redirect(301, convert_link(r, __res.headers['location'], _u.protocol === 'https:'));
-                return;
+            const _host = _u.hostname || _req.hostname;
+            if (_host && _host !== HOSTNAME) {
+                res.redirect(301, convert_link(r, url.resolve(_host, __res.headers['location']), _u.protocol === 'https:'));
+            } else {
+                res.status(502).send({message: 'Proxy failed! 301 Missing location.'});
             }
+            return;
         }
         __res.pipe(res);
     });
     __req.on("error", e => {
         logger.warn('Failed to proxy: ', e);
-        res.status(502).send({message: 'Proxy failed'});
+        res.status(502).send({message: 'Proxy failed! Request error.'});
     });
     __req.end();
 }
@@ -272,16 +280,13 @@ app.use((req, res, next) => {
         const ref = req.headers['referer'];
         const ref_url = get_original(ref);
         if (!ref_url) {
-            res.status(502).send({message: 'Proxy failed!', url: ref});
+            res.status(502).send({message: 'Proxy failed! Invalid referer.', url: ref});
             return;
         }
         const link = convert_link(ref_url, req.originalUrl, /^https:/.test(ref_url));
         res.redirect(302, link);
     } else {
-        if (req.hostname !== HOSTNAME)
-            res.redirect(302, convert_link('http://www.baidu.com', '/', false));
-        else
-            res.status(502).send({message: 'Proxy failed!'});
+        res.redirect(302, convert_link('http://www.baidu.com', '/', false));
     }
 });
 

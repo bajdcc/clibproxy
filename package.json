@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "pm2 start index.js -n clibproxy --watch",
     "restart": "pm2 restart clibproxy",
+    "run": "nodemon index.js",
     "stop": "pm2 stop clibproxy"
   },
   "repository": {
